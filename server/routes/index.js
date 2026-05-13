@@ -1,0 +1,149 @@
+const express = require('express');
+const router  = express.Router();
+
+const { verifyToken } = require('../middleware/auth.middleware');
+const { allowRoles }  = require('../middleware/role.middleware');
+
+// Controllers
+const authCtrl            = require('../controllers/auth.controller');
+const citasCtrl           = require('../controllers/citas.controller');
+const pacientesCtrl       = require('../controllers/pacientes.controller');
+const historialCtrl       = require('../controllers/historial.controller');
+const asistenciaCtrl      = require('../controllers/asistencia.controller');
+const notificacionesCtrl  = require('../controllers/notificaciones.controller');
+const tratamientosCtrl    = require('../controllers/tratamientos.controller');
+const odontologosCtrl     = require('../controllers/odontologos.controller');
+const usuariosCtrl        = require('../controllers/usuarios.controller');
+
+// ─── AUTH ───────────────────────────
+router.post('/auth/login', authCtrl.login);
+router.get('/auth/me', verifyToken, authCtrl.getMe);
+
+// ─── CITAS ──────────────────────────
+router.get('/citas', verifyToken, citasCtrl.getAll);
+router.get('/citas/stats', verifyToken, citasCtrl.getStats);
+router.get('/citas/:id', verifyToken, citasCtrl.getOne);
+
+router.post(
+  '/citas',
+  verifyToken,
+  allowRoles('Administrador', 'Odontologo', 'Paciente'),
+  citasCtrl.create
+);
+
+router.put(
+  '/citas/:id',
+  verifyToken,
+  allowRoles('Administrador', 'Odontologo'),
+  citasCtrl.update
+);
+
+router.delete(
+  '/citas/:id',
+  verifyToken,
+  allowRoles('Administrador'),
+  citasCtrl.remove
+);
+
+// ─── PACIENTES ──────────────────────
+router.get(
+  '/pacientes',
+  verifyToken,
+  allowRoles('Administrador', 'Odontologo'),
+  pacientesCtrl.getAll
+);
+
+router.get('/pacientes/:id', verifyToken, pacientesCtrl.getOne);
+
+router.post(
+  '/pacientes',
+  verifyToken,
+  allowRoles('Administrador'),
+  pacientesCtrl.create
+);
+
+router.put(
+  '/pacientes/:id',
+  verifyToken,
+  pacientesCtrl.update
+);
+
+// ─── HISTORIAL ──────────────────────
+router.get(
+  '/historial/:id_paciente',
+  verifyToken,
+  historialCtrl.getHistorialByPaciente
+);
+
+router.post(
+  '/historial',
+  verifyToken,
+  allowRoles('Administrador', 'Odontologo'),
+  historialCtrl.createHistorial
+);
+
+// ─── ASISTENCIA ─────────────────────
+router.get(
+  '/asistencia',
+  verifyToken,
+  allowRoles('Administrador', 'Odontologo'),
+  asistenciaCtrl.getAsistencia
+);
+
+router.post(
+  '/asistencia',
+  verifyToken,
+  allowRoles('Administrador', 'Odontologo'),
+  asistenciaCtrl.registrarAsistencia
+);
+
+// ─── NOTIFICACIONES ─────────────────
+router.get(
+  '/notificaciones',
+  verifyToken,
+  notificacionesCtrl.getMisNotificaciones
+);
+
+router.put(
+  '/notificaciones/:id/leer',
+  verifyToken,
+  notificacionesCtrl.marcarLeida
+);
+
+// ─── TRATAMIENTOS ───────────────────
+router.get(
+  '/tratamientos',
+  verifyToken,
+  tratamientosCtrl.getTratamientos
+);
+
+// ─── ODONTOLOGOS ────────────────────
+router.get(
+  '/odontologos',
+  verifyToken,
+  odontologosCtrl.getOdontologos
+);
+
+router.get(
+  '/odontologos/perfil',
+  verifyToken,
+  allowRoles('Odontologo'),
+  odontologosCtrl.getPerfil
+);
+
+// ─── USUARIOS ───────────────────────
+router.get(
+  '/usuarios',
+  verifyToken,
+  allowRoles('Administrador'),
+  usuariosCtrl.getAllUsuarios
+);
+
+router.put(
+  '/usuarios/:id/toggle',
+  verifyToken,
+  allowRoles('Administrador'),
+  usuariosCtrl.toggleActivo
+);
+
+module.exports = router;

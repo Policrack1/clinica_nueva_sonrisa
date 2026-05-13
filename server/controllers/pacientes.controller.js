@@ -1,0 +1,88 @@
+const db = require('../config/db');
+ 
+async function getAll(req, res) {
+  try {
+    let query = `
+      SELECT p.*, u.nombre, u.email, u.activo,
+             COUNT(c.id_cita) AS total_citas
+      FROM pacientes p
+      JOIN usuarios u ON p.id_usuario = u.id_usuario
+      LEFT JOIN citas c ON p.id_paciente = c.id_paciente
+      WHERE 1=1`;
+    const params = [];
+ 
+    if (req.query.q) {
+      query += ' AND (u.nombre LIKE ? OR p.dni LIKE ?)';
+      params.push(`%${req.query.q}%`, `%${req.query.q}%`);
+    }
+ 
+    // Odontólogo solo ve sus pacientes
+    if (req.user.rol === 'Odontologo') {
+      query += ` AND p.id_paciente IN (
+        SELECT DISTINCT id_paciente FROM citas WHERE id_odontologo = ?
+      )`;
+      params.push(req.user.id_odontologo);
+    }
+ 
+    query += ' GROUP BY p.id_paciente ORDER BY u.nombre ASC';
+    const [rows] = await db.execute(query, params);
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: 'Error al obtener pacientes' });
+  }
+}
+ 
+async function getOne(req, res) {
+  try {
+    const [rows] = await db.execute(
+      `SELECT p.*, u.nombre, u.email FROM pacientes p
+       JOIN usuarios u ON p.id_usuario = u.id_usuario
+       WHERE p.id_paciente = ?`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, message: 'Paciente no encontrado' });
+    res.json({ ok: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: 'Error interno' });
+  }
+}
+ 
+async function create(req, res) {
+  const { nombre, email, password, dni, telefono, fecha_nacimiento, genero, grupo_sanguineo, alergias, direccion } = req.body;
+  if (!nombre || !email || !password || !dni) {
+    return res.status(400).json({ ok: false, message: 'Campos requeridos incompletos' });
+  }
+  const bcrypt = require('bcryptjs');
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const [usuRes] = await db.execute(
+      'INSERT INTO usuarios (id_rol, nombre, email, password_hash) VALUES (3,?,?,?)',
+      [nombre, email, hash]
+    );
+    await db.execute(
+      `INSERT INTO pacientes (id_usuario, dni, telefono, fecha_nacimiento, genero, grupo_sanguineo, alergias, direccion)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      [usuRes.insertId, dni, telefono||null, fecha_nacimiento||null, genero||'M', grupo_sanguineo||null, alergias||'Ninguna', direccion||null]
+    );
+    res.status(201).json({ ok: true, message: 'Paciente registrado' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ ok: false, message: 'Email o DNI ya registrado' });
+    res.status(500).json({ ok: false, message: 'Error al registrar paciente' });
+  }
+}
+ 
+async function update(req, res) {
+  const { telefono, alergias, direccion, grupo_sanguineo } = req.body;
+  try {
+    await db.execute(
+      'UPDATE pacientes SET telefono=?, alergias=?, direccion=?, grupo_sanguineo=? WHERE id_paciente=?',
+      [telefono, alergias, direccion, grupo_sanguineo, req.params.id]
+    );
+    res.json({ ok: true, message: 'Paciente actualizado' });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: 'Error al actualizar' });
+  }
+}
+ 
+module.exports = { getAll, getOne, create, update };
