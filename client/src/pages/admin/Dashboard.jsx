@@ -121,7 +121,7 @@ export default function AdminDashboard() {
           {/* Gráfico semanal */}
           <div className="card flex-1">
             <div className="card-header">
-              <span className="card-title">Citas esta semana</span>
+              <span className="card-title">Citas para la semana actual</span>
               <span className="text-xs text-slate-400">Lun–Dom</span>
             </div>
             <div className="card-body">
