@@ -1,3 +1,4 @@
+// Mejora para demostración de merge
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Users, CheckCircle, Clock, Plus, Search, BarChart3, Bell } from 'lucide-react'
