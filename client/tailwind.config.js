@@ -1,11 +1,19 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        primary:  { DEFAULT: '#2563eb', dark: '#1d4ed8', light: '#eff6ff', mid: '#dbeafe' },
+        sidebar:  { DEFAULT: '#0f172a', hover: '#1e293b', active: '#1e40af' },
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        sora: ['Sora', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+    },
   },
   plugins: [],
 }
+ 

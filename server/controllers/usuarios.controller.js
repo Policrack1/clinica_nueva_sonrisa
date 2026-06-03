@@ -1,3 +1,4 @@
+const db = require('../config/db');
 async function getAllUsuarios(req, res) {
   try {
     const [rows] = await db.execute(
@@ -11,7 +12,7 @@ async function getAllUsuarios(req, res) {
 }
  
 async function toggleActivo(req, res) {
-  try {
+  try { 
     await db.execute(
       'UPDATE usuarios SET activo = NOT activo WHERE id_usuario = ?',
       [req.params.id]

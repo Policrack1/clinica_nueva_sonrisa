@@ -1,0 +1,1 @@
+export { AdminBuscar as default } from './Pacientes'

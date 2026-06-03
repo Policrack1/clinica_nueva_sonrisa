@@ -4,6 +4,9 @@ const db = require('../config/db');
 // GET /api/citas  — admin ve todas, doctor las suyas, paciente las suyas
 async function getAll(req, res) {
   try {
+
+    console.log('USUARIO TOKEN:', req.user)
+
     let query = `SELECT * FROM vista_citas WHERE 1=1`;
     const params = [];
 
@@ -11,21 +14,39 @@ async function getAll(req, res) {
       query += ' AND id_odontologo = ?';
       params.push(req.user.id_odontologo);
     }
-    if (req.user.rol === 'Paciente') {
-      query += ' AND id_paciente = ?';
-      params.push(req.user.id_paciente);
-    }
 
     // Filtros opcionales por query params
-    if (req.query.estado)  { query += ' AND estado = ?';     params.push(req.query.estado); }
-    if (req.query.fecha)   { query += ' AND fecha_cita = ?'; params.push(req.query.fecha);  }
-    if (req.query.mes)     { query += ' AND MONTH(fecha_cita) = ? AND YEAR(fecha_cita) = ?';
-                             params.push(req.query.mes, req.query.anio || new Date().getFullYear()); }
+    if (req.query.estado) {
+      query += ' AND estado = ?';
+      params.push(req.query.estado);
+    }
+
+    if (req.query.id_paciente) {
+      query += ' AND id_paciente = ?';
+      params.push(req.query.id_paciente);
+    }
+
+    if (req.query.fecha) {
+      query += ' AND fecha_cita = ?';
+      params.push(req.query.fecha);
+    }
+
+    if (req.query.mes) {
+      query += ' AND MONTH(fecha_cita) = ? AND YEAR(fecha_cita) = ?';
+      params.push(req.query.mes, req.query.anio || new Date().getFullYear());
+    }
 
     query += ' ORDER BY fecha_cita DESC, hora_cita ASC';
 
+    console.log('QUERY:', query)
+    console.log('PARAMS:', params)
+
     const [rows] = await db.execute(query, params);
+
+    console.log('CITAS ENCONTRADAS:', rows.length)
+
     res.json({ ok: true, data: rows });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, message: 'Error al obtener citas' });
@@ -91,11 +112,11 @@ async function update(req, res) {
     const fields = [];
     const params = [];
 
-    if (estado)         { fields.push('estado = ?');         params.push(estado); }
-    if (fecha_cita)     { fields.push('fecha_cita = ?');     params.push(fecha_cita); }
-    if (hora_cita)      { fields.push('hora_cita = ?');      params.push(hora_cita); }
+    if (estado) { fields.push('estado = ?'); params.push(estado); }
+    if (fecha_cita) { fields.push('fecha_cita = ?'); params.push(fecha_cita); }
+    if (hora_cita) { fields.push('hora_cita = ?'); params.push(hora_cita); }
     if (id_tratamiento) { fields.push('id_tratamiento = ?'); params.push(id_tratamiento); }
-    if (notas !== undefined) { fields.push('notas = ?');     params.push(notas); }
+    if (notas !== undefined) { fields.push('notas = ?'); params.push(notas); }
 
     if (!fields.length) {
       return res.status(400).json({ ok: false, message: 'Nada que actualizar' });
@@ -163,16 +184,31 @@ async function getStats(req, res) {
       `SELECT COUNT(*) AS total FROM citas
        WHERE YEARWEEK(fecha_cita) = YEARWEEK(NOW()) ${whereDoc}`, params
     );
-    const [[totalPac]] = await db.execute('SELECT COUNT(*) AS total FROM pacientes');
+    let totalPacQuery = `
+  SELECT COUNT(DISTINCT id_paciente) AS total
+  FROM citas
+`;
+
+    const totalPacParams = [];
+
+    if (req.user.rol === 'Odontologo') {
+      totalPacQuery += ' WHERE id_odontologo = ?';
+      totalPacParams.push(req.user.id_odontologo);
+    }
+
+    const [[totalPac]] = await db.execute(
+      totalPacQuery,
+      totalPacParams
+    );
 
     res.json({
       ok: true,
       data: {
-        citas_hoy:        hoy.total,
-        completadas_hoy:  completadas.total,
-        pendientes_hoy:   pendientes.total,
-        citas_semana:     semana.total,
-        total_pacientes:  totalPac.total,
+        citas_hoy: hoy.total,
+        completadas_hoy: completadas.total,
+        pendientes_hoy: pendientes.total,
+        citas_semana: semana.total,
+        total_pacientes: totalPac.total,
       }
     });
   } catch (err) {

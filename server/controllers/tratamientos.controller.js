@@ -1,3 +1,4 @@
+const db = require('../config/db');
 async function getTratamientos(req, res) {
   try {
     const [rows] = await db.execute(
@@ -10,11 +11,13 @@ async function getTratamientos(req, res) {
     });
 
   } catch (err) {
-    res.status(500).json({
-      ok: false,
-      message: 'Error'
-    });
-  }
+  console.error(err);
+
+  res.status(500).json({
+    ok: false,
+    message: err.message
+  });
+}
 }
 
 module.exports = { getTratamientos };

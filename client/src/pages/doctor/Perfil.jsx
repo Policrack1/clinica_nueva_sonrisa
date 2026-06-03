@@ -1,0 +1,1 @@
+export { DoctorPerfil as default } from './Notificaciones'

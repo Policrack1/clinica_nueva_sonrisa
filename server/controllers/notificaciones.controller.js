@@ -1,3 +1,4 @@
+const db = require('../config/db');
 async function getMisNotificaciones(req, res) {
   try {
     const [rows] = await db.execute(
@@ -10,8 +11,13 @@ async function getMisNotificaciones(req, res) {
     );
     res.json({ ok: true, data: rows, no_leidas: total });
   } catch (err) {
-    res.status(500).json({ ok: false, message: 'Error' });
-  }
+  console.error(err);
+
+  res.status(500).json({
+    ok: false,
+    message: err.message
+  });
+}
 }
  
 async function marcarLeida(req, res) {

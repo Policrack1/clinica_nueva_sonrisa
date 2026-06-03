@@ -1,3 +1,4 @@
+const db = require('../config/db');
 async function getHistorialByPaciente(req, res) {
   try {
     const [rows] = await db.execute(

@@ -1,3 +1,4 @@
+const db = require('../config/db');
 async function getOdontologos(req, res) {
   try {
     const [rows] = await db.execute(
@@ -9,8 +10,13 @@ async function getOdontologos(req, res) {
     );
     res.json({ ok: true, data: rows });
   } catch (err) {
-    res.status(500).json({ ok: false, message: 'Error' });
-  }
+  console.error(err);
+
+  res.status(500).json({
+    ok: false,
+    message: err.message
+  });
+}
 }
  
 async function getPerfil(req, res) {

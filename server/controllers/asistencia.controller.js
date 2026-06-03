@@ -1,3 +1,4 @@
+const db = require('../config/db');
 async function getAsistencia(req, res) {
   try {
     const [rows] = await db.execute(
