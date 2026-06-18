@@ -11,21 +11,18 @@ const PORT = process.env.PORT || 3001;
 // ── Middlewares ──
 
 // Lista de orígenes permitidos
+// En server/server.js
 const allowedOrigins = [
-  'http://localhost:5173',                      // Tu frontend local (Vite)
-  'http://127.0.0.1:5173',                     // Alternativa local
-  process.env.CLIENT_URL                       // URL de Vercel cuando la tengas
-].filter(Boolean); // .filter(Boolean) elimina valores undefined o vacíos
+  'http://localhost:5173',
+  'https://clinica-nueva-sonrisa.vercel.app' // ¡AQUÍ AGREGA ESTO!
+];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir peticiones sin origen (como Postman, Insomnia o herramientas de desarrollo)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Bloqueado por políticas de CORS de Nueva Sonrisa'));
+      callback(new Error('Bloqueado por CORS'));
     }
   },
   credentials: true,
