@@ -6,36 +6,44 @@ import { calcAge, fmtDate } from '../../utils/formatters'
 import api from '../../utils/api'
 
 export default function PatientPerfil() {
-  const { user }  = useAuth()
-  const [perfil,  setPerfil]  = useState(null)
-  const [citas,   setCitas]   = useState([])
+  const { user } = useAuth()
+  const [perfil, setPerfil] = useState(null)
+  const [citas, setCitas] = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
-  const [form,    setForm]    = useState({})
-  const [saving,  setSaving]  = useState(false)
-  const [msg,     setMsg]     = useState('')
+  const [form, setForm] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
 
   useEffect(() => { load() }, [])
 
   async function load() {
     try {
       const [pRes, cRes] = await Promise.all([
-        api.get('/pacientes'),
+        api.get(`/pacientes/${user.id_paciente}`),
         api.get('/citas'),
       ])
-      const myPac = (pRes.data.data || []).find(p => p.email === user?.email)
+
+      const myPac = pRes.data.data
+
       if (myPac) {
         setPerfil(myPac)
+
         setForm({
-          telefono:        myPac.telefono || '',
-          alergias:        myPac.alergias || 'Ninguna',
-          direccion:       myPac.direccion || '',
+          telefono: myPac.telefono || '',
+          alergias: myPac.alergias || 'Ninguna',
+          direccion: myPac.direccion || '',
           grupo_sanguineo: myPac.grupo_sanguineo || 'O+',
         })
       }
+
       setCitas(cRes.data.data || [])
-    } catch { }
-    finally { setLoading(false) }
+
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleSave() {
@@ -56,7 +64,7 @@ export default function PatientPerfil() {
   }
 
   const completadas = citas.filter(c => c.estado === 'completada')
-  const proximas    = citas.filter(c => ['programada', 'confirmada'].includes(c.estado))
+  const proximas = citas.filter(c => ['programada', 'confirmada'].includes(c.estado))
 
   if (loading) return <Spinner />
 
@@ -84,7 +92,7 @@ export default function PatientPerfil() {
       {msg && (
         <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium
           ${msg.startsWith('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                 : 'bg-red-50 text-red-700 border border-red-200'}`}>
+            : 'bg-red-50 text-red-700 border border-red-200'}`}>
           {msg}
         </div>
       )}
@@ -117,10 +125,10 @@ export default function PatientPerfil() {
             </div>
             <div className="card-body">
               {[
-                ['Total de citas',   citas.length],
-                ['Completadas',      completadas.length],
-                ['Próximas citas',   proximas.length],
-                ['Última visita',    completadas.length > 0
+                ['Total de citas', citas.length],
+                ['Completadas', completadas.length],
+                ['Próximas citas', proximas.length],
+                ['Última visita', completadas.length > 0
                   ? fmtDate(completadas[completadas.length - 1]?.fecha_cita?.split('T')[0])
                   : '—'],
               ].map(([k, v]) => (
@@ -144,14 +152,14 @@ export default function PatientPerfil() {
             <div className="card-body">
               {[
                 ['Nombre completo', user?.nombre],
-                ['Email',           user?.email],
-                ['DNI',             perfil?.dni],
-                ['Edad',            perfil?.fecha_nacimiento
+                ['Email', user?.email],
+                ['DNI', perfil?.dni],
+                ['Edad', perfil?.fecha_nacimiento
                   ? calcAge(perfil.fecha_nacimiento.split('T')[0]) + ' años'
                   : '—'],
                 ['Fecha nacimiento', fmtDate(perfil?.fecha_nacimiento?.split('T')[0])],
-                ['Género',           perfil?.genero === 'M' ? 'Masculino'
-                                   : perfil?.genero === 'F' ? 'Femenino' : 'Otro'],
+                ['Género', perfil?.genero === 'M' ? 'Masculino'
+                  : perfil?.genero === 'F' ? 'Femenino' : 'Otro'],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between py-2.5 border-b border-slate-100 text-sm last:border-b-0">
                   <span className="text-slate-500 font-medium">{k}</span>
@@ -186,7 +194,7 @@ export default function PatientPerfil() {
                         value={form.grupo_sanguineo}
                         onChange={e => setForm({ ...form, grupo_sanguineo: e.target.value })}
                       >
-                        {['O+','O-','A+','A-','B+','B-','AB+','AB-'].map(g => (
+                        {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(g => (
                           <option key={g}>{g}</option>
                         ))}
                       </select>
@@ -214,10 +222,10 @@ export default function PatientPerfil() {
                 : (
                   <div>
                     {[
-                      ['Teléfono',        perfil?.telefono || '—'],
+                      ['Teléfono', perfil?.telefono || '—'],
                       ['Grupo sanguíneo', perfil?.grupo_sanguineo || '—'],
-                      ['Alergias',        perfil?.alergias || 'Ninguna'],
-                      ['Dirección',       perfil?.direccion || '—'],
+                      ['Alergias', perfil?.alergias || 'Ninguna'],
+                      ['Dirección', perfil?.direccion || '—'],
                     ].map(([k, v]) => (
                       <div key={k} className="flex justify-between py-2.5 border-b border-slate-100 text-sm last:border-b-0">
                         <span className="text-slate-500 font-medium">{k}</span>
@@ -237,8 +245,8 @@ export default function PatientPerfil() {
             <div className="font-bold text-blue-800 text-sm mb-3">📞 Contacto — Nueva Sonrisa</div>
             {[
               ['WhatsApp', '+51 987 654 321'],
-              ['Email',    'citas@nuevasonrisa.pe'],
-              ['Horario',  'Lun–Sáb · 8:00am – 6:00pm'],
+              ['Email', 'citas@nuevasonrisa.pe'],
+              ['Horario', 'Lun–Sáb · 8:00am – 6:00pm'],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between text-sm py-1.5 border-b border-blue-100 last:border-b-0">
                 <span className="text-blue-600 font-medium">{k}</span>

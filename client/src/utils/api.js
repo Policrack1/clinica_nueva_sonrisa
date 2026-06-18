@@ -17,9 +17,7 @@ api.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401 || err.response?.status === 403) {
-      localStorage.removeItem('ns_token')
-      localStorage.removeItem('ns_user')
-      window.location.href = '/login'
+      console.error('ERROR AUTH:', err.response)
     }
     return Promise.reject(err)
   }

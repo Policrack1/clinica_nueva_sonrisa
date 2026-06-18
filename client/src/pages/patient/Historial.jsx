@@ -6,25 +6,27 @@ import { fmtDate } from '../../utils/formatters'
 import api from '../../utils/api'
 
 export default function PatientHistorial() {
-  const { user }    = useAuth()
+  const { user } = useAuth()
   const [historial, setHistorial] = useState([])
-  const [paciente,  setPaciente]  = useState(null)
-  const [loading,   setLoading]   = useState(true)
-  const [expanded,  setExpanded]  = useState(null)
+  const [paciente, setPaciente] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(null)
 
   useEffect(() => { load() }, [])
+  console.log('USER:', user)
 
   async function load() {
     try {
-      const pRes  = await api.get('/pacientes')
-      const myPac = (pRes.data.data || []).find(p => p.email === user?.email)
-      if (!myPac) return
-      setPaciente(myPac)
+      if (!user?.id_paciente) return
 
-      const hRes = await api.get(`/historial/${myPac.id_paciente}`)
+      const hRes = await api.get(`/historial/${user.id_paciente}`)
+
       setHistorial(hRes.data.data || [])
-    } catch { }
-    finally { setLoading(false) }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (loading) return <Spinner />
@@ -130,7 +132,7 @@ export default function PatientHistorial() {
                         <div className="text-[10px] font-bold text-blue-400 mt-0.5 uppercase">
                           {h.fecha_cita
                             ? new Date(h.fecha_cita + 'T00:00:00')
-                                .toLocaleString('es-PE', { month: 'short' })
+                              .toLocaleString('es-PE', { month: 'short' })
                             : ''}
                         </div>
                       </div>
