@@ -11,7 +11,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit:    10,
   queueLimit:         0,
-  timezone: 'local',
+  timezone: '-05:00', // En lugar de 'local', asegura consistencia en la nube
 });
 
 // Verificar conexión al iniciar
