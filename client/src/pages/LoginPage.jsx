@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, X } from 'lucide-react'
+// Supongamos que usas tu utilidad api.js para las peticiones directas
+import api from '../utils/api' 
 
 const ROLES = [
   { key: 'admin',    label: 'Administrador', icon: '🛡️', email: 'admin@sonrisa.com',   pass: 'admin123' },
@@ -19,6 +21,15 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false)
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
+
+  // Estados para el Modal de Registro Autónomo de Pacientes
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [regNombre, setRegNombre] = useState('')
+  const [regEmail, setRegEmail] = useState('')
+  const [regPassword, setRegPassword] = useState('')
+  const [regError, setRegError] = useState('')
+  const [regSuccess, setRegSuccess] = useState('')
+  const [regLoading, setRegLoading] = useState(false)
 
   function pickRole(r) {
     setSelectedRole(r.key)
@@ -40,6 +51,34 @@ export default function LoginPage() {
       setError(err.response?.data?.message || 'Credenciales incorrectas')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Manejador del Registro Público de Pacientes
+  async function handleRegisterPaciente(e) {
+    e.preventDefault()
+    setRegError('')
+    setRegSuccess('')
+    setRegLoading(true)
+
+    try {
+      const res = await api.post('/auth/register-paciente', {
+        nombre: regNombre,
+        email: regEmail,
+        password: regPassword
+      })
+
+      if (res.data.ok) {
+        setRegSuccess(res.data.message)
+        // Limpiar campos
+        setRegNombre('')
+        setRegEmail('')
+        setRegPassword('')
+      }
+    } catch (err) {
+      setRegError(err.response?.data?.message || 'Error al procesar el registro')
+    } finally {
+      setRegLoading(false)
     }
   }
 
@@ -96,6 +135,7 @@ export default function LoginPage() {
             {ROLES.map(r => (
               <button
                 key={r.key}
+                type="button"
                 onClick={() => pickRole(r)}
                 className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl
                             border-2 text-xs font-bold transition-all
@@ -169,10 +209,122 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* 🔥 ENLACE DE AUTO-REGISTRO DINÁMICO (Solo visible al marcar Paciente) */}
+          {selectedRole === 'paciente' && (
+            <div className="text-center mt-5 border-t border-slate-100 pt-4">
+              <p className="text-xs text-slate-500">
+                ¿Eres un paciente nuevo?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegError('');
+                    setRegSuccess('');
+                    setShowRegisterModal(true);
+                  }}
+                  className="text-blue-600 hover:underline font-bold text-xs"
+                >
+                  Regístrate aquí
+                </button>
+              </p>
+            </div>
+          )}
+
         </div>
       </div>
 
-      {/* Responsive: ocultar lado izquierdo en móvil */}
+      {/* 🔥 MODAL DE REGISTRO CON APROBACIÓN */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            
+            <button
+              type="button"
+              onClick={() => setShowRegisterModal(false)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 inline-flex items-center justify-center text-xl mb-2">👤</div>
+              <h3 className="font-sora text-lg font-bold text-slate-800">Registro de Paciente</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Crea tu cuenta para solicitar atención</p>
+            </div>
+
+            {regError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg mb-4">
+                ❌ {regError}
+              </div>
+            )}
+
+            {regSuccess ? (
+              <div className="text-center py-4">
+                <div className="text-3xl mb-2">⏳</div>
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-4 py-3 rounded-xl font-medium leading-relaxed">
+                  {regSuccess}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterModal(false)}
+                  className="mt-5 px-5 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700"
+                >
+                  Entendido, volver
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleRegisterPaciente} className="flex flex-col gap-3.5">
+                <div>
+                  <label className="form-label text-xs">Nombre Completo</label>
+                  <input
+                    className="form-control text-sm"
+                    type="text"
+                    value={regNombre}
+                    onChange={e => setRegNombre(e.target.value)}
+                    placeholder="Ej. José Miguel"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="form-label text-xs">Correo electrónico</label>
+                  <input
+                    className="form-control text-sm"
+                    type="email"
+                    value={regEmail}
+                    onChange={e => setRegEmail(e.target.value)}
+                    placeholder="paciente@ejemplo.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="form-label text-xs">Contraseña</label>
+                  <input
+                    className="form-control text-sm"
+                    type="password"
+                    value={regPassword}
+                    onChange={e => setRegPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                  />
+                </div>
+
+                <span className="text-[11px] text-amber-600 bg-amber-50/50 p-2 rounded-lg border border-amber-100 block mt-1 leading-normal">
+                  ⚠️ **Importante:** Tu cuenta se registrará en estado *Pendiente*. Un administrador deberá verificarla antes de que puedas iniciar sesión.
+                </span>
+
+                <button
+                  type="submit"
+                  disabled={regLoading}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 mt-2 transition-all"
+                >
+                  {regLoading ? 'Procesando...' : 'Enviar Solicitud de Registro'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Responsive */}
       <style>{`@media(max-width:768px){.grid-cols-2{grid-template-columns:1fr}div:first-child{display:none}}`}</style>
     </div>
   )
