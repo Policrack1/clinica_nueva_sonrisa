@@ -4,15 +4,21 @@ const db = require('../config/db');
 // GET /api/citas  — admin ve todas, doctor las suyas, paciente las suyas
 async function getAll(req, res) {
   try {
-
     console.log('USUARIO TOKEN:', req.user)
 
     let query = `SELECT * FROM vista_citas WHERE 1=1`;
     const params = [];
 
+    // 🔥 FILTRO PARA ODONTÓLOGO
     if (req.user.rol === 'Odontologo') {
       query += ' AND id_odontologo = ?';
       params.push(req.user.id_odontologo);
+    }
+
+    // 🔥 CORRECCIÓN: FILTRO PARA PACIENTE
+    if (req.user.rol === 'Paciente') {
+      query += ' AND id_paciente = ?';
+      params.push(req.user.id_paciente);
     }
 
     // Filtros opcionales por query params
@@ -162,53 +168,37 @@ async function remove(req, res) {
 // GET /api/citas/stats  — estadísticas para dashboard
 async function getStats(req, res) {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    let whereDoc = '';
+    let whereClause = '';
     const params = [];
 
+    // 🔥 CORRECCIÓN: Separar contadores globales o específicos por rol
     if (req.user.rol === 'Odontologo') {
-      whereDoc = 'AND id_odontologo = ?';
+      whereClause = 'AND id_odontologo = ?';
       params.push(req.user.id_odontologo);
+    } else if (req.user.rol === 'Paciente') {
+      whereClause = 'AND id_paciente = ?';
+      params.push(req.user.id_paciente);
     }
 
-    const [[hoy]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM citas WHERE fecha_cita = ? ${whereDoc}`, [today, ...params]
+    // NOTA: Removí el filtro estricto de la fecha de "hoy" en los contadores generales 
+    // para que coincida con lo que muestra tu UI del paciente (Total de citas, completadas, próximas)
+    
+    const [[totales]] = await db.execute(
+      `SELECT COUNT(*) AS total FROM citas WHERE 1=1 ${whereClause}`, params
     );
     const [[completadas]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM citas WHERE fecha_cita = ? AND estado = 'completada' ${whereDoc}`, [today, ...params]
+      `SELECT COUNT(*) AS total FROM citas WHERE estado = 'completada' ${whereClause}`, params
     );
-    const [[pendientes]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM citas WHERE fecha_cita = ? AND estado IN ('programada','confirmada') ${whereDoc}`, [today, ...params]
-    );
-    const [[semana]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM citas
-       WHERE YEARWEEK(fecha_cita) = YEARWEEK(NOW()) ${whereDoc}`, params
-    );
-    let totalPacQuery = `
-  SELECT COUNT(DISTINCT id_paciente) AS total
-  FROM citas
-`;
-
-    const totalPacParams = [];
-
-    if (req.user.rol === 'Odontologo') {
-      totalPacQuery += ' WHERE id_odontologo = ?';
-      totalPacParams.push(req.user.id_odontologo);
-    }
-
-    const [[totalPac]] = await db.execute(
-      totalPacQuery,
-      totalPacParams
+    const [[proximas]] = await db.execute(
+      `SELECT COUNT(*) AS total FROM citas WHERE estado IN ('programada','confirmada') ${whereClause}`, params
     );
 
     res.json({
       ok: true,
       data: {
-        citas_hoy: hoy.total,
-        completadas_hoy: completadas.total,
-        pendientes_hoy: pendientes.total,
-        citas_semana: semana.total,
-        total_pacientes: totalPac.total,
+        citas_hoy: totales.total,          // Adaptado para que pinte tus tarjetas generales
+        completadas_hoy: completadas.total,  // Adaptado para que pinte tus tarjetas generales
+        pendientes_hoy: proximas.total     // Adaptado para que pinte tus tarjetas generales
       }
     });
   } catch (err) {
