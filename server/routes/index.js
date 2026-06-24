@@ -18,6 +18,8 @@ const usuariosCtrl        = require('../controllers/usuarios.controller');
 // ─── AUTH ───────────────────────────
 router.post('/auth/login', authCtrl.login);
 router.get('/auth/me', verifyToken, authCtrl.getMe);
+// 🔥 NUEVO: Registro público de pacientes (Sin verifyToken porque cualquiera puede registrarse)
+router.post('/auth/register-paciente', authCtrl.registerPaciente);
 
 // ─── CITAS ──────────────────────────
 router.get('/citas', verifyToken, citasCtrl.getAll);
@@ -144,6 +146,21 @@ router.put(
   verifyToken,
   allowRoles('Administrador'),
   usuariosCtrl.toggleActivo
+);
+
+// 🔥 NUEVOS: Endpoints para que el Administrador gestione aprobaciones pendientes
+router.get(
+  '/usuarios/pendientes',
+  verifyToken,
+  allowRoles('Administrador'),
+  usuariosCtrl.getPacientesPendientes
+);
+
+router.put(
+  '/usuarios/:id/aprobar',
+  verifyToken,
+  allowRoles('Administrador'),
+  usuariosCtrl.aprobarPaciente
 );
 
 module.exports = router;

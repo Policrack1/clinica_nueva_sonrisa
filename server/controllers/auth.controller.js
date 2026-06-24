@@ -12,9 +12,10 @@ async function login(req, res) {
   }
 
   try {
+    // 1. Modificado para traer también la columna 'estado' de la tabla usuarios
     const [rows] = await db.execute(
-      `SELECT u.id_usuario, u.nombre, u.email, u.password_hash, u.activo,
-              r.nombre_rol AS rol
+      `SELECT u.id_usuario, u.nombre, u.email, u.password_hash, u.activo, u.estado,
+              r.nombre_rol AS rol, u.id_rol
        FROM usuarios u
        JOIN roles r ON u.id_rol = r.id_rol
        WHERE u.email = ?`,
@@ -29,6 +30,14 @@ async function login(req, res) {
 
     if (!user.activo) {
       return res.status(403).json({ ok: false, message: 'Usuario desactivado' });
+    }
+
+    // 🔥 NUEVO CONTROL: Bloquear acceso si es Paciente y su estado es 'pendiente'
+    if (user.rol === 'Paciente' && user.estado === 'pendiente') {
+      return res.status(403).json({ 
+        ok: false, 
+        message: 'Tu registro está pendiente de aprobación por el Administrador.' 
+      });
     }
 
     const validPassword = await bcrypt.compare(password, user.password_hash);
@@ -80,7 +89,7 @@ async function login(req, res) {
 async function getMe(req, res) {
   try {
     const [rows] = await db.execute(
-      `SELECT u.id_usuario, u.nombre, u.email, u.activo, u.fecha_creacion,
+      `SELECT u.id_usuario, u.nombre, u.email, u.activo, u.estado, u.fecha_creacion,
               r.nombre_rol AS rol
        FROM usuarios u
        JOIN roles r ON u.id_rol = r.id_rol
@@ -98,4 +107,44 @@ async function getMe(req, res) {
   }
 }
 
-module.exports = { login, getMe };
+// 🔥 NUEVA FUNCIÓN: POST /api/auth/register-paciente
+async function registerPaciente(req, res) {
+  const { nombre, email, password } = req.body;
+
+  if (!nombre || !email || !password) {
+    return res.status(400).json({ ok: false, message: 'Todos los campos son requeridos' });
+  }
+
+  try {
+    // Verificar si el correo ya existe en la BD
+    const [existing] = await db.execute('SELECT id_usuario FROM usuarios WHERE email = ?', [email]);
+    if (existing.length > 0) {
+      return res.status(400).json({ ok: false, message: 'El correo electrónico ya está registrado.' });
+    }
+
+    // Buscar el id_rol correspondiente a 'Paciente' dinámicamente
+    const [rolRow] = await db.execute("SELECT id_rol FROM roles WHERE nombre_rol = 'Paciente'");
+    const id_rol = rolRow.length > 0 ? rolRow[0].id_rol : 3; // Usa 3 por defecto si no lo encuentra
+
+    // Encriptar la contraseña introducida por el usuario
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // Insertar el nuevo usuario con activo = 1 y estado = 'pendiente'
+    await db.execute(
+      `INSERT INTO usuarios (id_rol, nombre, email, password_hash, activo, estado) 
+       VALUES (?, ?, ?, ?, 1, 'pendiente')`,
+      [id_rol, nombre, email, passwordHash]
+    );
+
+    res.status(201).json({ 
+      ok: true, 
+      message: 'Registro recibido con éxito. En espera de aprobación por el Administrador.' 
+    });
+  } catch (err) {
+    console.error('Register paciente error:', err);
+    res.status(500).json({ ok: false, message: 'Error al procesar el registro del paciente' });
+  }
+}
+
+module.exports = { login, getMe, registerPaciente };
