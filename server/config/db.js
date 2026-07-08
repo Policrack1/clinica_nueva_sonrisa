@@ -12,6 +12,9 @@ const pool = mysql.createPool({
   connectionLimit:    10,
   queueLimit:         0,
   timezone: '-05:00', // En lugar de 'local', asegura consistencia en la nube
+  ssl: {
+    rejectUnauthorized: false // <-- ESTO ES LO QUE FALTA PARA TiDB CLOUD
+  }
 });
 
 // Verificar conexión al iniciar

@@ -107,7 +107,7 @@ async function getMe(req, res) {
   }
 }
 
-// 🔥 NUEVA FUNCIÓN: POST /api/auth/register-paciente
+// 🔥 FUNCIÓN CORREGIDA: POST /api/auth/register-paciente
 async function registerPaciente(req, res) {
   const { nombre, email, password } = req.body;
 
@@ -130,11 +130,30 @@ async function registerPaciente(req, res) {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Insertar el nuevo usuario con activo = 1 y estado = 'pendiente'
-    await db.execute(
+    // 1. Insertar el nuevo usuario con activo = 1 y estado = 'pendiente'
+    const [userResult] = await db.execute(
       `INSERT INTO usuarios (id_rol, nombre, email, password_hash, activo, estado) 
        VALUES (?, ?, ?, ?, 1, 'pendiente')`,
       [id_rol, nombre, email, passwordHash]
+    );
+
+    const nuevoIdUsuario = userResult.insertId;
+
+    // 2. 🔥 VINCULACIÓN AUTOMÁTICA: Crear la fila en la tabla 'pacientes'
+    // Ajusté los valores a vacíos ('') o genéricos para que MySQL acepte el registro sin problemas
+    await db.execute(
+      `INSERT INTO pacientes (id_usuario, dni, telefono, fecha_nacimiento, direccion, alergias, genero, grupo_sanguineo) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        nuevoIdUsuario, 
+        '',                  // dni vacío momentáneamente
+        '',                  // telefono vacío
+        '2000-01-01',        // fecha por defecto
+        '',                  // direccion vacía
+        'Ninguna',           // alergias por defecto
+        'Masculino',         // genero por defecto
+        'O+'                 // grupo sanguineo por defecto
+      ]
     );
 
     res.status(201).json({ 
