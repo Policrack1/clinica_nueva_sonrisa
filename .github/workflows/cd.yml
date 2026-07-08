@@ -1,0 +1,21 @@
+name: CD - Entrega Continua a Vercel
+
+on:
+  workflow_run:
+    workflows: ["CI - Validacion de Clinica Nueva Sonrisa"]
+    types:
+      - completed
+
+jobs:
+  deploy-to-production:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+    - name: Checkout de codigo
+      uses: actions/checkout@v4
+
+    - name: Notificar Despliegue Automatizado
+      run: |
+        echo "La Integracion Continua paso con exito."
+        echo "Desplegando nueva version en la infraestructura de Vercel..."

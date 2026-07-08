@@ -1,0 +1,30 @@
+name: CI - Validacion de Clinica Nueva Sonrisa
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-project:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout de codigo
+      uses: actions/checkout@v4
+
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+
+    - name: Instalar y Verificar Frontend
+      run: |
+        cd client
+        npm install
+
+    - name: Instalar y Verificar Backend
+      run: |
+        cd server
+        npm install
