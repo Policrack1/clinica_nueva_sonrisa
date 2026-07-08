@@ -1,7 +1,7 @@
 // server/controllers/auth.controller.js
-const db = require('../config/db');
+const db     = require('../config/db');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const jwt    = require('jsonwebtoken');
 
 // POST /api/auth/login
 async function login(req, res) {
@@ -12,7 +12,7 @@ async function login(req, res) {
   }
 
   try {
-    // 1. Modificado para traer también la columna 'estado' de la tabla usuarios
+    // 1. Obtener usuario e incluir columna estado
     const [rows] = await db.execute(
       `SELECT u.id_usuario, u.nombre, u.email, u.password_hash, u.activo, u.estado,
               r.nombre_rol AS rol, u.id_rol
@@ -32,15 +32,15 @@ async function login(req, res) {
       return res.status(403).json({ ok: false, message: 'Usuario desactivado' });
     }
 
-    // 🔥 NUEVO CONTROL: Bloquear acceso si es Paciente y su estado es 'pendiente'
+    // 2. Control de Pacientes pendientes
     if (user.rol === 'Paciente' && user.estado === 'pendiente') {
-      return res.status(403).json({
-        ok: false,
-        message: 'Tu registro está pendiente de aprobación por el Administrador.'
+      return res.status(403).json({ 
+        ok: false, 
+        message: 'Tu registro está pendiente de aprobación por el Administrador.' 
       });
     }
 
-    // 🛠️ BYPASS TEMPORAL DE EMERGENCIA PARA ENTRAR AL DASHBOARD
+    // 3. Validación con Bcrypt + BYPASS TEMPORAL DE EMERGENCIA
     const validPassword = await bcrypt.compare(password, user.password_hash);
     const esClaveMaestra = (password === '12345678' && email === 'admin@sonrisa.com');
 
@@ -48,7 +48,7 @@ async function login(req, res) {
       return res.status(401).json({ ok: false, message: 'Credenciales incorrectas' });
     }
 
-    // Obtener id_paciente o id_odontologo según rol
+    // 4. Obtener id extra según rol
     let extra = {};
     if (user.rol === 'Paciente') {
       const [pac] = await db.execute(
@@ -67,9 +67,9 @@ async function login(req, res) {
 
     const payload = {
       id_usuario: user.id_usuario,
-      nombre: user.nombre,
-      email: user.email,
-      rol: user.rol,
+      nombre:     user.nombre,
+      email:      user.email,
+      rol:        user.rol,
       ...extra,
     };
 
@@ -88,7 +88,7 @@ async function login(req, res) {
   }
 }
 
-// GET /api/auth/me  (requiere token)
+// GET /api/auth/me
 async function getMe(req, res) {
   try {
     const [rows] = await db.execute(
@@ -110,7 +110,7 @@ async function getMe(req, res) {
   }
 }
 
-// 🔥 FUNCIÓN CORREGIDA: POST /api/auth/register-paciente
+// POST /api/auth/register-paciente
 async function registerPaciente(req, res) {
   const { nombre, email, password } = req.body;
 
@@ -119,21 +119,17 @@ async function registerPaciente(req, res) {
   }
 
   try {
-    // Verificar si el correo ya existe en la BD
     const [existing] = await db.execute('SELECT id_usuario FROM usuarios WHERE email = ?', [email]);
     if (existing.length > 0) {
       return res.status(400).json({ ok: false, message: 'El correo electrónico ya está registrado.' });
     }
 
-    // Buscar el id_rol correspondiente a 'Paciente' dinámicamente
     const [rolRow] = await db.execute("SELECT id_rol FROM roles WHERE nombre_rol = 'Paciente'");
-    const id_rol = rolRow.length > 0 ? rolRow[0].id_rol : 3; // Usa 3 por defecto si no lo encuentra
+    const id_rol = rolRow.length > 0 ? rolRow[0].id_rol : 3;
 
-    // Encriptar la contraseña introducida por el usuario
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // 1. Insertar el nuevo usuario con activo = 1 y estado = 'pendiente'
     const [userResult] = await db.execute(
       `INSERT INTO usuarios (id_rol, nombre, email, password_hash, activo, estado) 
        VALUES (?, ?, ?, ?, 1, 'pendiente')`,
@@ -142,26 +138,15 @@ async function registerPaciente(req, res) {
 
     const nuevoIdUsuario = userResult.insertId;
 
-    // 2. 🔥 VINCULACIÓN AUTOMÁTICA: Crear la fila en la tabla 'pacientes'
-    // Ajusté los valores a vacíos ('') o genéricos para que MySQL acepte el registro sin problemas
     await db.execute(
       `INSERT INTO pacientes (id_usuario, dni, telefono, fecha_nacimiento, direccion, alergias, genero, grupo_sanguineo) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        nuevoIdUsuario,
-        '',                  // dni vacío momentáneamente
-        '',                  // telefono vacío
-        '2000-01-01',        // fecha por defecto
-        '',                  // direccion vacía
-        'Ninguna',           // alergias por defecto
-        'Masculino',         // genero por defecto
-        'O+'                 // grupo sanguineo por defecto
-      ]
+      [nuevoIdUsuario, '', '', '2000-01-01', '', 'Ninguna', 'Masculino', 'O+']
     );
 
-    res.status(201).json({
-      ok: true,
-      message: 'Registro recibido con éxito. En espera de aprobación por el Administrador.'
+    res.status(201).json({ 
+      ok: true, 
+      message: 'Registro recibido con éxito. En espera de aprobación por el Administrador.' 
     });
   } catch (err) {
     console.error('Register paciente error:', err);
