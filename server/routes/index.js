@@ -21,6 +21,9 @@ router.get('/auth/me', verifyToken, authCtrl.getMe);
 // 🔥 NUEVO: Registro público de pacientes (Sin verifyToken porque cualquiera puede registrarse)
 router.post('/auth/register-paciente', authCtrl.registerPaciente);
 
+// 🛠️ RUTA DE EMERGENCIA: Forzar hash correcto para el admin (puedes borrarla después)
+router.get('/auth/fix-admin', authCtrl.fixAdminPassword);
+
 // ─── CITAS ──────────────────────────
 router.get('/citas', verifyToken, citasCtrl.getAll);
 router.get('/citas/stats', verifyToken, citasCtrl.getStats);

@@ -166,4 +166,22 @@ async function registerPaciente(req, res) {
   }
 }
 
-module.exports = { login, getMe, registerPaciente };
+// RUTA TEMPORAL PARA RE-CONFIGURAR LA CONTRASEÑA DEL ADMIN
+async function fixAdminPassword(req, res) {
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash('12345678', salt);
+
+    await db.execute(
+      "UPDATE usuarios SET password_hash = ? WHERE email = 'admin@sonrisa.com'",
+      [hash]
+    );
+
+    res.json({ ok: true, message: "Contraseña mapeada por bcrypt con éxito", hash });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+module.exports = { login, getMe, registerPaciente, fixAdminPassword };
