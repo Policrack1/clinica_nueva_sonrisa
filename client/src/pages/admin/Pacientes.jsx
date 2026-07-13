@@ -1,4 +1,3 @@
-// ─── src/pages/admin/Pacientes.jsx ───────────────────────
 import { useState, useEffect } from 'react'
 import { Plus, Search } from 'lucide-react'
 import { PageHeader, Modal, ModalFooter, Avatar, EmptyState, Spinner } from '../../components/ui/index'
@@ -7,7 +6,7 @@ import api from '../../utils/api'
 
 function emptyForm() {
   return {
-    nombre: '', email: '', password: 'paciente123', dni: '', telefono: '',
+    id_usuario: '', nombre: '', email: '', password: 'paciente123', dni: '', telefono: '',
     fecha_nacimiento: '', genero: 'M', grupo_sanguineo: 'O+', alergias: 'Ninguna', direccion: ''
   }
 }
@@ -15,6 +14,7 @@ function emptyForm() {
 export function AdminPacientes() {
   const [pacientes, setPacientes] = useState([])
   const [filtrados, setFiltrados] = useState([])
+  const [usuariosPendientes, setUsuariosPendientes] = useState([]) // 🔥 Nuevo
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [filt, setFilt] = useState('todos')
@@ -32,10 +32,24 @@ export function AdminPacientes() {
   useEffect(() => { filterList() }, [pacientes, query, filt])
 
   async function load() {
+    setLoading(true)
     try {
       const { data } = await api.get('/pacientes')
       setPacientes(data.data || [])
     } catch { } finally { setLoading(false) }
+  }
+
+  // 🔥 Nueva función para cargar usuarios pendientes antes de abrir el modal
+  async function abrirModalNuevo() {
+    try {
+      const { data } = await api.get('/usuarios/pendientes')
+      setUsuariosPendientes(data.data || [])
+    } catch (err) {
+      console.error("No se pudieron cargar usuarios pendientes")
+    }
+    setForm(emptyForm())
+    setError('')
+    setModalNew(true)
   }
 
   function filterList() {
@@ -52,39 +66,34 @@ export function AdminPacientes() {
     setSelected(p)
     setTab('info')
     setModalDet(true)
-
     try {
-      // Historial
       const hist = await api.get(`/historial/${p.id_paciente}`)
       setHistorial(hist.data.data || [])
-
-      // Citas
       const citasRes = await api.get('/citas')
-
-      const citasPaciente = (citasRes.data.data || []).filter(
-        c => c.id_paciente === p.id_paciente
-      )
-
+      const citasPaciente = (citasRes.data.data || []).filter(c => c.id_paciente === p.id_paciente)
       setCitas(citasPaciente)
-
     } catch (err) {
       console.error(err)
-      setHistorial([])
-      setCitas([])
+      setHistorial([]); setCitas([])
     }
   }
 
   async function handleCreate() {
-    if (!form.nombre || !form.dni || !form.email) { setError('Completa los campos requeridos'); return }
+    if (!form.nombre || !form.dni || (!form.id_usuario && !form.email)) { 
+      setError('Completa los campos requeridos'); return 
+    }
     setSaving(true); setError('')
     try {
-      await api.post('/pacientes', form)
+      if (form.id_usuario) {
+        await api.post('/pacientes/vincular', form)
+      } else {
+        await api.post('/pacientes', form)
+      }
       setModalNew(false); setForm(emptyForm()); await load()
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al registrar')
+      setError(err.response?.data?.message || 'Error al procesar')
     } finally { setSaving(false) }
   }
-
   if (loading) return <Spinner />
 
   return (
@@ -109,6 +118,8 @@ export function AdminPacientes() {
           </div>
           <span className="ml-auto text-xs text-slate-400">{filtrados.length} paciente{filtrados.length !== 1 ? 's' : ''}</span>
         </div>
+
+        
 
         {/* Grid tarjetas */}
         {filtrados.length === 0
@@ -137,9 +148,27 @@ export function AdminPacientes() {
             </div>
           )}
       </div>
-
-      {/* Modal Nuevo Paciente */}
       <Modal open={modalNew} onClose={() => setModalNew(false)} title="👤 Registrar Nuevo Paciente" size="lg">
+        
+        {/* Sección de vinculación */}
+        {usuariosPendientes.length > 0 && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <label className="form-label text-blue-800 font-bold">Vincular usuario registrado:</label>
+            <select className="form-control" onChange={(e) => {
+              const u = usuariosPendientes.find(x => x.id_usuario == e.target.value);
+              if (u) {
+                setForm({...form, id_usuario: u.id_usuario, nombre: u.nombre, email: u.email});
+              } else {
+                // Si vuelve a la opción vacía, resetea solo los campos vinculables
+                setForm({...emptyForm(), password: form.password}); 
+              }
+            }}>
+              <option value="">-- Seleccionar usuario para convertir en paciente --</option>
+              {usuariosPendientes.map(u => <option key={u.id_usuario} value={u.id_usuario}>{u.nombre} ({u.email})</option>)}
+            </select>
+          </div>
+        )}
+
         <div className="modal-grid">
           {[['nombre', 'Nombre completo *', 'text', 'Nombre Apellido'], ['email', 'Email *', 'email', 'correo@ejemplo.com'], ['password', 'Contraseña *', 'password', '••••••••'], ['dni', 'DNI *', 'text', '12345678'], ['telefono', 'Teléfono', 'tel', '9XX XXX XXX'], ['fecha_nacimiento', 'Fecha de nacimiento', 'date', ''], ['alergias', 'Alergias', 'text', 'Ninguna / especificar...'], ['direccion', 'Dirección', 'text', 'Av. Lima 123']].map(([k, l, t, ph]) => (
             <div key={k}>
@@ -160,10 +189,11 @@ export function AdminPacientes() {
             </select>
           </div>
         </div>
+        
         {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
+        
         <ModalFooter onClose={() => setModalNew(false)} onConfirm={handleCreate} confirmLabel="✅ Registrar" loading={saving} />
       </Modal>
-
       {/* Modal Historial / Detalle */}
       <Modal open={modalDet} onClose={() => setModalDet(false)} title={selected?.nombre || ''} size="lg">
         {selected && (
