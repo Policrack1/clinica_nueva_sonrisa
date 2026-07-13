@@ -165,41 +165,57 @@ async function remove(req, res) {
   }
 }
 
-// GET /api/citas/stats  — estadísticas para dashboard
+// GET /api/citas/stats  — estadísticas para dashboard de Nueva Sonrisa
 async function getStats(req, res) {
   try {
     let whereClause = '';
-    const params = [];
+    const paramsCitas = [];
+    const paramsPacientes = [];
 
-    // 🔥 CORRECCIÓN: Separar contadores globales o específicos por rol
+    // Filtro por rol
     if (req.user.rol === 'Odontologo') {
       whereClause = 'AND id_odontologo = ?';
-      params.push(req.user.id_odontologo);
+      paramsCitas.push(req.user.id_odontologo);
+      paramsPacientes.push(req.user.id_odontologo);
     } else if (req.user.rol === 'Paciente') {
       whereClause = 'AND id_paciente = ?';
-      params.push(req.user.id_paciente);
+      paramsCitas.push(req.user.id_paciente);
+      paramsPacientes.push(req.user.id_paciente);
     }
 
-    const [[totales]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM citas WHERE 1=1 ${whereClause}`, params
-    );
-    const [[completadas]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM citas WHERE estado = 'completada' ${whereClause}`, params
-    );
-    const [[proximas]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM citas WHERE estado IN ('programada','confirmada') ${whereClause}`, params
+    // 1. Citas de HOY (Filtrando estrictamente por la fecha actual)
+    const [[citasHoy]] = await db.execute(
+      `SELECT COUNT(*) AS total FROM citas 
+       WHERE CURDATE() = DATE(fecha_cita) ${whereClause}`, 
+      paramsCitas
     );
 
+    // 2. Citas programadas/confirmadas para ESTA SEMANA (Lunes a Domingo actual)
+    const [[citasSemana]] = await db.execute(
+      `SELECT COUNT(*) AS total FROM citas 
+       WHERE YEARWEEK(fecha_cita, 1) = YEARWEEK(CURDATE(), 1) 
+         AND estado IN ('programada', 'confirmada') ${whereClause}`, 
+      paramsCitas
+    );
+
+    // 3. Cantidad de pacientes ÚNICOS asignados
+    const [[misPacientes]] = await db.execute(
+      `SELECT COUNT(DISTINCT id_paciente) AS total FROM citas 
+       WHERE 1=1 ${whereClause}`, 
+      paramsPacientes
+    );
+
+    // Mandamos el objeto exacto estructurado para el frontend
     res.json({
       ok: true,
       data: {
-        citas_hoy: totales.total,          // Adaptado para que pinte tus tarjetas generales
-        completadas_hoy: completadas.total,  // Adaptado para que pinte tus tarjetas generales
-        pendientes_hoy: proximas.total     // Adaptado para que pinte tus tarjetas generales
+        citas_hoy: citasHoy.total,
+        citas_semana: citasSemana.total,
+        mis_pacientes: misPacientes.total
       }
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error en getStats:", err);
     res.status(500).json({ ok: false, message: 'Error al obtener estadísticas' });
   }
 }
