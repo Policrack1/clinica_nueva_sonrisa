@@ -66,6 +66,14 @@ router.get(
   pacientesCtrl.getAll
 );
 
+// 🔥 NUEVA RUTA: Vincular usuario existente como paciente
+router.post(
+  '/pacientes/vincular',
+  verifyToken,
+  allowRoles('Administrador'),
+  pacientesCtrl.vincularUsuario
+);
+
 router.get('/pacientes/:id', verifyToken, pacientesCtrl.getOne);
 
 router.post(

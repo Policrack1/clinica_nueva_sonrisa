@@ -95,5 +95,33 @@ async function update(req, res) {
     res.status(500).json({ ok: false, message: 'Error al actualizar' });
   }
 }
+// POST /api/pacientes/vincular — Vincula un usuario ya existente como paciente
+async function vincularUsuario(req, res) {
+  const { id_usuario, dni, telefono, grupo_sanguineo, alergias, direccion } = req.body;
 
-module.exports = { getAll, getOne, create, update };
+  if (!id_usuario || !dni) {
+    return res.status(400).json({ ok: false, message: 'El usuario y el DNI son obligatorios' });
+  }
+
+  try {
+    // 1. Insertamos al usuario en la tabla pacientes
+    await db.execute(
+      `INSERT INTO pacientes (id_usuario, dni, telefono, grupo_sanguineo, alergias, direccion) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id_usuario, dni, telefono || null, grupo_sanguineo || 'O+', alergias || 'Ninguna', direccion || null]
+    );
+
+    // 2. Actualizamos el rol del usuario a Paciente (id_rol = 3 según tu lógica de create)
+    await db.execute(
+      `UPDATE usuarios SET id_rol = 3 WHERE id_usuario = ?`,
+      [id_usuario]
+    );
+
+    res.status(201).json({ ok: true, message: 'Usuario vinculado exitosamente como paciente' });
+  } catch (err) {
+    console.error('Error al vincular paciente:', err);
+    res.status(500).json({ ok: false, message: 'Error al vincular el usuario como paciente' });
+  }
+}
+
+module.exports = { getAll, getOne, create, update, vincularUsuario };
