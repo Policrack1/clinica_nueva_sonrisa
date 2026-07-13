@@ -204,30 +204,44 @@ async function getStats(req, res) {
   }
 }
 
-// ── NUEVA FUNCIÓN: PUT /api/citas/:id/evolucion ──
+// PUT /api/citas/:id/evolucion — Guarda la evolución en el historial clínico real
 async function updateEvolucion(req, res) {
   const { evolucion } = req.body;
+  const id_cita = req.params.id;
 
-  if (evolucion === undefined) {
-    return res.status(400).json({ ok: false, message: 'El campo evolución es requerido' });
+  if (!evolucion) {
+    return res.status(400).json({ ok: false, message: 'El reporte de evolución no puede estar vacío' });
   }
 
   try {
-    const [result] = await db.execute(
-      'UPDATE citas SET evolucion = ? WHERE id_cita = ?',
-      [evolucion, req.params.id]
+    // 1. Buscamos el id_paciente asociado a esta cita
+    const [citaRows] = await db.execute(
+      'SELECT id_paciente FROM citas WHERE id_cita = ?',
+      [id_cita]
     );
 
-    if (result.affectedRows === 0) {
+    if (!citaRows.length) {
       return res.status(404).json({ ok: false, message: 'Cita no encontrada' });
     }
 
-    res.json({ ok: true, message: 'Reporte de evolución guardado' });
+    const { id_paciente } = citaRows[0];
+
+    // 2. Insertamos o actualizamos en historial_clinico usando la sintaxis VALUES() alineada a tu otro controlador
+    await db.execute(
+      `INSERT INTO historial_clinico (id_cita, id_paciente, diagnostico, trat_realizado, medicamentos)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE diagnostico = VALUES(diagnostico)`, 
+      [id_cita, id_paciente, evolucion, 'Evolución de cita', 'Ninguno']
+    );
+
+    // 3. Mantenemos la actualización en la tabla citas por consistencia del estado del modal
+    await db.execute('UPDATE citas SET evolucion = ? WHERE id_cita = ?', [evolucion, id_cita]);
+
+    res.json({ ok: true, message: 'Evolución guardada con éxito en el Historial Clínico' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ ok: false, message: 'Error al guardar la evolución' });
+    res.status(500).json({ ok: false, message: 'Error al registrar en el historial clínico' });
   }
 }
 
-// Agregado updateEvolucion al module.exports
 module.exports = { getAll, getOne, create, update, remove, getStats, updateEvolucion };
