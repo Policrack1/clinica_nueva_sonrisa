@@ -28,28 +28,32 @@ export default function DoctorDashboard() {
     } catch { } finally { setLoading(false) }
   }
 
-  const today = new Date().toISOString().split('T')[0]
+const today = new Date().toISOString().split('T')[0]
 
-  const proximas = citas
+  // Filtramos y ordenamos de forma segura
+  const proximas = (citas || [])
     .filter(c =>
+      c &&
       c.fecha_cita >= today &&
       ['programada', 'confirmada'].includes(c.estado)
     )
-    // Corrección aquí: cambiamos 'c.fecha_cita' por 'a.fecha_cita' para que ordene bien
-    .sort((a, b) => a.fecha_cita?.localeCompare(b.fecha_cita))
+    .sort((a, b) => (a.fecha_cita || '').localeCompare(b.fecha_cita || ''))
     .slice(0, 3)
 
-  // Llenar dinámicamente el gráfico de barras "Mi semana" con tus datos reales
+  // Poblado seguro del gráfico semanal
   const weekData = WEEK.map((d, index) => {
-    // ISO Day de 1 (Lun) a 7 (Dom)
-    const targetDay = index + 1;
-    const totalCitasDia = citas.filter(c => {
-      if (!c.fecha_cita) return false;
-      const dateObj = new Date(c.fecha_cita);
-      // Tomamos el día de la semana (ajustando para que lunes sea 1)
-      const day = dateObj.getDay() === 0 ? 7 : dateObj.getDay();
-
-      // Contamos solo las de la semana actual
+    const targetDay = index + 1; // 1: Lun, ..., 7: Dom
+    
+    const totalCitasDia = (citas || []).filter(c => {
+      if (!c || !c.fecha_cita) return false;
+      
+      // Cortamos solo el string de la fecha para evitar problemas de zona horaria
+      const fechaLimpia = c.fecha_cita.split('T')[0]; 
+      const dateObj = new Date(fechaLimpia + 'T12:00:00'); // Evita desfases de horas
+      
+      let day = dateObj.getDay(); 
+      if (day === 0) day = 7; // Ajustamos domingo a 7
+      
       return day === targetDay && ['programada', 'confirmada', 'completada'].includes(c.estado);
     }).length;
 
