@@ -16,7 +16,7 @@ export default function LoginPage() {
   const navigate    = useNavigate()
 
   const [selectedRole, setSelectedRole] = useState('admin')
-  const [email,    setEmail]    = useState('admin@sonrisa.com')
+  const [email,     setEmail]    = useState('admin@sonrisa.com')
   const [password, setPassword] = useState('admin123')
   const [showPass, setShowPass] = useState(false)
   const [error,    setError]    = useState('')
@@ -41,7 +41,7 @@ export default function LoginPage() {
   async function handleLogin(e) {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    loading(true)
     try {
       const user = await login(email, password)
       if (user.rol === 'Administrador') navigate('/admin')
@@ -83,10 +83,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-2">
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 w-full bg-white">
 
-      {/* ── Lado izquierdo ── */}
-      <div className="relative overflow-hidden flex flex-col justify-between p-12"
+      {/* ── Lado izquierdo (Oculto en celular, visible en PC) ── */}
+      <div className="relative overflow-hidden hidden md:flex flex-col justify-between p-12"
            style={{ background: 'linear-gradient(145deg,#1d4ed8,#0ea5e9)' }}>
         {/* Fondo */}
         <div className="absolute inset-0 opacity-15"
@@ -118,8 +118,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ── Lado derecho ── */}
-      <div className="bg-white flex items-center justify-center p-12">
+      {/* ── Lado derecho (Formulario - Elástico e ideal para celular) ── */}
+      <div className="bg-white flex items-center justify-center p-6 sm:p-12 w-full min-h-screen md:min-h-0">
         <div className="w-full max-w-[400px]">
 
           {/* Logo */}
@@ -209,7 +209,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* 🔥 ENLACE DE AUTO-REGISTRO DINÁMICO (Solo visible al marcar Paciente) */}
+          {/* ENLACE DE AUTO-REGISTRO DINÁMICO */}
           {selectedRole === 'paciente' && (
             <div className="text-center mt-5 border-t border-slate-100 pt-4">
               <p className="text-xs text-slate-500">
@@ -232,7 +232,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* 🔥 MODAL DE REGISTRO CON APROBACIÓN */}
+      {/* ── MODAL DE REGISTRO ── */}
       {showRegisterModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
@@ -323,9 +323,6 @@ export default function LoginPage() {
           </div>
         </div>
       )}
-
-      {/* Responsive */}
-      <style>{`@media(max-width:768px){.grid-cols-2{grid-template-columns:1fr}div:first-child{display:none}}`}</style>
     </div>
   )
 }
