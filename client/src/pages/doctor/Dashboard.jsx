@@ -30,22 +30,34 @@ export default function DoctorDashboard() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const hoy = citas
-    .filter(c => c.fecha_cita?.startsWith(today))
-    .sort((a, b) => a.hora_cita?.localeCompare(b.hora_cita))
-
   const proximas = citas
     .filter(c =>
       c.fecha_cita >= today &&
       ['programada', 'confirmada'].includes(c.estado)
     )
-    .sort((a, b) => c.fecha_cita?.localeCompare(b.fecha_cita))
+    // Corrección aquí: cambiamos 'c.fecha_cita' por 'a.fecha_cita' para que ordene bien
+    .sort((a, b) => a.fecha_cita?.localeCompare(b.fecha_cita))
     .slice(0, 3)
 
-  const weekData = WEEK.map(d => ({
-    dia: d,
-    citas: 0
-  }))
+  // Llenar dinámicamente el gráfico de barras "Mi semana" con tus datos reales
+  const weekData = WEEK.map((d, index) => {
+    // ISO Day de 1 (Lun) a 7 (Dom)
+    const targetDay = index + 1;
+    const totalCitasDia = citas.filter(c => {
+      if (!c.fecha_cita) return false;
+      const dateObj = new Date(c.fecha_cita);
+      // Tomamos el día de la semana (ajustando para que lunes sea 1)
+      const day = dateObj.getDay() === 0 ? 7 : dateObj.getDay();
+
+      // Contamos solo las de la semana actual
+      return day === targetDay && ['programada', 'confirmada', 'completada'].includes(c.estado);
+    }).length;
+
+    return {
+      dia: d,
+      citas: totalCitasDia
+    };
+  });
 
   if (loading) return <Spinner />
 
@@ -73,7 +85,8 @@ export default function DoctorDashboard() {
       <div className="grid grid-cols-3 gap-3.5 mb-5">
         <StatCard icon="📅" value={hoy.length} label="Citas hoy" color="bg-blue-100" />
         <StatCard icon="✅" value={stats?.citas_semana} label="Esta semana" color="bg-emerald-100" />
-        <StatCard icon="👥" value={stats?.total_pacientes} label="Mis pacientes" color="bg-violet-100" />
+        {/* Cambio aquí: de total_pacientes a mis_pacientes */}
+        <StatCard icon="👥" value={stats?.mis_pacientes} label="Mis pacientes" color="bg-violet-100" />
       </div>
 
       <div className="grid grid-cols-[1.5fr_1fr] gap-4">
