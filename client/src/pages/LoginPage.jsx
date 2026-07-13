@@ -38,21 +38,21 @@ export default function LoginPage() {
     setError('')
   }
 
-  async function handleLogin(e) {
-    e.preventDefault()
-    setError('')
-    loading(true)
-    try {
-      const user = await login(email, password)
-      if (user.rol === 'Administrador') navigate('/admin')
-      else if (user.rol === 'Odontologo') navigate('/doctor')
-      else navigate('/paciente')
-    } catch (err) {
-      setError(err.response?.data?.message || 'Credenciales incorrectas')
-    } finally {
-      setLoading(false)
-    }
+async function handleLogin(e) {
+  e.preventDefault()
+  setError('')
+  setLoading(true) // 👈 ¡Corregido aquí! Antes decía loading(true)
+  try {
+    const user = await login(email, password)
+    if (user.rol === 'Administrador') navigate('/admin')
+    else if (user.rol === 'Odontologo') navigate('/doctor')
+    else navigate('/paciente')
+  } catch (err) {
+    setError(err.response?.data?.message || 'Credenciales incorrectas')
+  } finally {
+    setLoading(false)
   }
+}
 
   // Manejador del Registro Público de Pacientes
   async function handleRegisterPaciente(e) {
