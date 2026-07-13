@@ -23,14 +23,21 @@ export default function DoctorDashboard() {
         api.get('/citas/stats'),
         api.get('/citas'),
       ])
-      setStats(sRes.data.data)
-      setCitas(cRes.data.data || [])
-    } catch { } finally { setLoading(false) }
+      setStats(sRes.data?.data || null)
+      setCitas(cRes.data?.data || [])
+    } catch (error) {
+      console.error("Error cargando dashboard:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0]
 
-  // Filtramos y ordenamos de forma segura
+  const hoy = (citas || [])
+    .filter(c => c && c.fecha_cita?.startsWith(today))
+    .sort((a, b) => (a.hora_cita || '').localeCompare(b.hora_cita || ''))
+
   const proximas = (citas || [])
     .filter(c =>
       c &&
@@ -40,27 +47,18 @@ const today = new Date().toISOString().split('T')[0]
     .sort((a, b) => (a.fecha_cita || '').localeCompare(b.fecha_cita || ''))
     .slice(0, 3)
 
-  // Poblado seguro del gráfico semanal
   const weekData = WEEK.map((d, index) => {
-    const targetDay = index + 1; // 1: Lun, ..., 7: Dom
-    
+    const targetDay = index + 1;
     const totalCitasDia = (citas || []).filter(c => {
       if (!c || !c.fecha_cita) return false;
-      
-      // Cortamos solo el string de la fecha para evitar problemas de zona horaria
-      const fechaLimpia = c.fecha_cita.split('T')[0]; 
-      const dateObj = new Date(fechaLimpia + 'T12:00:00'); // Evita desfases de horas
-      
-      let day = dateObj.getDay(); 
-      if (day === 0) day = 7; // Ajustamos domingo a 7
-      
+      const fechaLimpia = c.fecha_cita.split('T')[0];
+      const dateObj = new Date(fechaLimpia + 'T12:00:00');
+      let day = dateObj.getDay();
+      if (day === 0) day = 7;
       return day === targetDay && ['programada', 'confirmada', 'completada'].includes(c.estado);
     }).length;
 
-    return {
-      dia: d,
-      citas: totalCitasDia
-    };
+    return { dia: d, citas: totalCitasDia };
   });
 
   if (loading) return <Spinner />
@@ -88,13 +86,11 @@ const today = new Date().toISOString().split('T')[0]
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3.5 mb-5">
         <StatCard icon="📅" value={hoy.length} label="Citas hoy" color="bg-blue-100" />
-        <StatCard icon="✅" value={stats?.citas_semana} label="Esta semana" color="bg-emerald-100" />
-        {/* Cambio aquí: de total_pacientes a mis_pacientes */}
-        <StatCard icon="👥" value={stats?.mis_pacientes} label="Mis pacientes" color="bg-violet-100" />
+        <StatCard icon="✅" value={stats?.citas_semana || 0} label="Esta semana" color="bg-emerald-100" />
+        <StatCard icon="👥" value={stats?.mis_pacientes || 0} label="Mis pacientes" color="bg-violet-100" />
       </div>
 
       <div className="grid grid-cols-[1.5fr_1fr] gap-4">
-
         {/* Agenda hoy */}
         <div className="card">
           <div className="card-header">
@@ -128,7 +124,6 @@ const today = new Date().toISOString().split('T')[0]
 
         {/* Columna derecha */}
         <div className="flex flex-col gap-4">
-
           {/* Próxima cita */}
           <div className="card">
             <div className="card-header"><span className="card-title">🔜 Próxima cita</span></div>
@@ -148,8 +143,8 @@ const today = new Date().toISOString().split('T')[0]
                         <div className="font-bold text-sm">{p.nombre_paciente}</div>
                         <div className="text-xs text-slate-400 mt-0.5">🦷 {p.nombre_tratamiento}</div>
                         <div className="text-xs text-blue-600 font-semibold mt-0.5">⏰ {p.hora_cita?.slice(0, 5)}</div>
-                        {proximas[0]?.alergias && proximas[0].alergias !== 'Ninguna' && (
-                          <div className="text-xs text-red-600 mt-1 font-semibold">⚠️ Alergia: {proximas[0].alergias}</div>
+                        {p?.alergias && p.alergias !== 'Ninguna' && (
+                          <div className="text-xs text-red-600 mt-1 font-semibold">⚠️ Alergia: {p.alergias}</div>
                         )}
                       </div>
                     </div>
