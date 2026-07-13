@@ -180,9 +180,6 @@ async function getStats(req, res) {
       params.push(req.user.id_paciente);
     }
 
-    // NOTA: Removí el filtro estricto de la fecha de "hoy" en los contadores generales 
-    // para que coincida con lo que muestra tu UI del paciente (Total de citas, completadas, próximas)
-    
     const [[totales]] = await db.execute(
       `SELECT COUNT(*) AS total FROM citas WHERE 1=1 ${whereClause}`, params
     );
@@ -207,4 +204,30 @@ async function getStats(req, res) {
   }
 }
 
-module.exports = { getAll, getOne, create, update, remove, getStats };
+// ── NUEVA FUNCIÓN: PUT /api/citas/:id/evolucion ──
+async function updateEvolucion(req, res) {
+  const { evolucion } = req.body;
+
+  if (evolucion === undefined) {
+    return res.status(400).json({ ok: false, message: 'El campo evolución es requerido' });
+  }
+
+  try {
+    const [result] = await db.execute(
+      'UPDATE citas SET evolucion = ? WHERE id_cita = ?',
+      [evolucion, req.params.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ ok: false, message: 'Cita no encontrada' });
+    }
+
+    res.json({ ok: true, message: 'Reporte de evolución guardado' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: 'Error al guardar la evolución' });
+  }
+}
+
+// Agregado updateEvolucion al module.exports
+module.exports = { getAll, getOne, create, update, remove, getStats, updateEvolucion };

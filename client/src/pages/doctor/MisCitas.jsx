@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search } from 'lucide-react'
+import { Search, FileText, X, Save, Download } from 'lucide-react'
 import { PageHeader, StatusBadge, Spinner, EmptyState } from '../../components/ui/index'
 import { fmtDate, getStatusLabel } from '../../utils/formatters'
 import api from '../../utils/api'
@@ -7,12 +7,18 @@ import api from '../../utils/api'
 const ESTADOS = ['programada','confirmada','en_curso','completada','cancelada']
 
 export default function DoctorMisCitas() {
-  const [citas,    setCitas]   = useState([])
-  const [filtradas,setFilt]    = useState([])
-  const [loading,  setLoading] = useState(true)
-  const [query,    setQuery]   = useState('')
-  const [estado,   setEstado]  = useState('todas')
-  const [selCita,  setSelCita] = useState(null)
+  const [citas,     setCitas]   = useState([])
+  const [filtradas, setFilt]    = useState([])
+  const [loading,   setLoading] = useState(true)
+  const [query,     setQuery]   = useState('')
+  const [estado,    setEstado]  = useState('todas')
+  const [selCita,   setSelCita] = useState(null)
+
+  // ── NUEVOS ESTADOS PARA EL REPORTE DE EVOLUCIÓN ──
+  const [showEvolucionModal, setShowEvolucionModal] = useState(false)
+  const [citaEvolucion, setCitaEvolucion]           = useState(null)
+  const [evolucionTexto, setEvolucionTexto]         = useState('')
+  const [isSaving, setIsSaving]                     = useState(false)
 
   useEffect(() => { load() }, [])
   useEffect(() => { filter() }, [citas, query, estado])
@@ -44,6 +50,31 @@ export default function DoctorMisCitas() {
       await load()
       setSelCita(null)
     } catch { }
+  }
+
+  // ── MANEJADORES PARA EL REPORTE DE EVOLUCIÓN ──
+  function abrirModalEvolucion(cita) {
+    setCitaEvolucion(cita)
+    setEvolucionTexto(cita.evolucion || '') // Si la base de datos ya trae la evolución
+    setShowEvolucionModal(true)
+  }
+
+  async function handleSaveEvolucion(e) {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      // Endpoint para actualizar la evolución de la cita
+      await api.put(`/citas/${citaEvolucion.id_cita}/evolucion`, { 
+        evolucion: evolucionTexto 
+      })
+      alert('Reporte de evolución guardado correctamente')
+      setShowEvolucionModal(false)
+      await load() // Recargar para actualizar los datos locales
+    } catch (err) {
+      alert('Error al guardar la evolución')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (loading) return <Spinner />
@@ -82,7 +113,7 @@ export default function DoctorMisCitas() {
                 </thead>
                 <tbody>
                   {filtradas.map(c => (
-                    <tr key={c.id_cita} onClick={() => setSelCita(c)}>
+                    <tr key={c.id_cita} onClick={() => setSelCita(c)} className="cursor-pointer">
                       <td>{fmtDate(c.fecha_cita?.split('T')[0])}</td>
                       <td><span className="font-mono font-bold text-blue-600">{c.hora_cita?.slice(0,5)}</span></td>
                       <td>
@@ -96,7 +127,7 @@ export default function DoctorMisCitas() {
                       <td>{c.nombre_tratamiento}</td>
                       <td><StatusBadge status={c.estado} /></td>
                       <td onClick={e => e.stopPropagation()}>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1.5 items-center">
                           {c.estado === 'confirmada' && (
                             <button className="btn btn-xs bg-amber-100 text-amber-700 hover:bg-amber-200"
                               onClick={() => cambiarEstado(c.id_cita,'en_curso')}>▶ Iniciar</button>
@@ -109,6 +140,17 @@ export default function DoctorMisCitas() {
                             <button className="btn btn-xs bg-blue-100 text-blue-700 hover:bg-blue-200"
                               onClick={() => cambiarEstado(c.id_cita,'confirmada')}>Confirmar</button>
                           )}
+                          
+                          {/* ── BOTÓN DE EVOLUCIÓN (Solo si está Completada) ── */}
+                          {c.estado === 'completada' && (
+                            <button 
+                              className="btn btn-xs bg-blue-50 text-blue-700 hover:bg-blue-100 flex items-center gap-1 font-bold"
+                              onClick={() => abrirModalEvolucion(c)}
+                            >
+                              <FileText size={12} />
+                              Evolución
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -119,7 +161,7 @@ export default function DoctorMisCitas() {
         </div>
       </div>
 
-      {/* Modal detalle */}
+      {/* ── Modal Detalle Existente ── */}
       {selCita && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50"
              onClick={() => setSelCita(null)}>
@@ -156,6 +198,72 @@ export default function DoctorMisCitas() {
               )}
               <button className="btn btn-secondary" onClick={() => setSelCita(null)}>Cerrar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── NUEVO MODAL DE REPORTE DE EVOLUCIÓN ── */}
+      {showEvolucionModal && citaEvolucion && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50"
+             onClick={() => setShowEvolucionModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90%] max-w-lg" onClick={e => e.stopPropagation()}>
+            
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-sora font-bold text-lg text-slate-800 flex items-center gap-2">
+                  📄 Reporte Clínico de Evolución
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Paciente: <strong className="text-slate-700">{citaEvolucion.nombre_paciente}</strong> | Tratamiento: {citaEvolucion.nombre_tratamiento}
+                </p>
+              </div>
+              <button onClick={() => setShowEvolucionModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveEvolucion} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">
+                  Notas de Progreso y Evolución
+                </label>
+                <textarea
+                  className="w-full h-40 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                  placeholder="Escribe aquí las observaciones clínicas, avances o indicaciones del tratamiento efectuado..."
+                  value={evolucionTexto}
+                  onChange={e => setEvolucionTexto(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4 mt-1">
+                <button
+                  type="button"
+                  onClick={() => alert('Pronto: Descarga en PDF')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  <Download size={14} />
+                  Descargar PDF
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEvolucionModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-xl shadow-md transition-all"
+                  >
+                    <Save size={14} />
+                    {isSaving ? 'Guardando...' : 'Guardar Reporte'}
+                  </button>
+                </div>
+              </div>
+            </form>
+
           </div>
         </div>
       )}

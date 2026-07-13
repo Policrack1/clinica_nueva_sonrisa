@@ -1,19 +1,19 @@
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const { verifyToken } = require('../middleware/auth.middleware');
-const { allowRoles }  = require('../middleware/role.middleware');
+const { allowRoles } = require('../middleware/role.middleware');
 
 // Controllers
-const authCtrl            = require('../controllers/auth.controller');
-const citasCtrl           = require('../controllers/citas.controller');
-const pacientesCtrl       = require('../controllers/pacientes.controller');
-const historialCtrl       = require('../controllers/historial.controller');
-const asistenciaCtrl      = require('../controllers/asistencia.controller');
-const notificacionesCtrl  = require('../controllers/notificaciones.controller');
-const tratamientosCtrl    = require('../controllers/tratamientos.controller');
-const odontologosCtrl     = require('../controllers/odontologos.controller');
-const usuariosCtrl        = require('../controllers/usuarios.controller');
+const authCtrl = require('../controllers/auth.controller');
+const citasCtrl = require('../controllers/citas.controller');
+const pacientesCtrl = require('../controllers/pacientes.controller');
+const historialCtrl = require('../controllers/historial.controller');
+const asistenciaCtrl = require('../controllers/asistencia.controller');
+const notificacionesCtrl = require('../controllers/notificaciones.controller');
+const tratamientosCtrl = require('../controllers/tratamientos.controller');
+const odontologosCtrl = require('../controllers/odontologos.controller');
+const usuariosCtrl = require('../controllers/usuarios.controller');
 
 // ─── AUTH ───────────────────────────
 router.post('/auth/login', authCtrl.login);
@@ -48,6 +48,14 @@ router.delete(
   verifyToken,
   allowRoles('Administrador'),
   citasCtrl.remove
+);
+
+// 🔥 NUEVA RUTA: Guardar el reporte de evolución clínica de la cita
+router.put(
+  '/citas/:id/evolucion',
+  verifyToken,
+  allowRoles('Odontologo'), // Solo el odontólogo que atiende registra la evolución
+  citasCtrl.updateEvolucion
 );
 
 // ─── PACIENTES ──────────────────────
