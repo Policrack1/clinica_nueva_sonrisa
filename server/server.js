@@ -8,25 +8,14 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Middlewares ──
-// ── Middlewares ──
 
-// Lista de orígenes permitidos
-// En server/server.js
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://clinica-nueva-sonrisa.vercel.app' // ¡AQUÍ AGREGA ESTO!
-];
-
+// Configuración de CORS flexible para permitir el acceso desde navegadores móviles y entornos locales
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Bloqueado por CORS'));
-    }
-  },
-  credentials: true,
+  origin: '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -54,7 +43,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ ok: false, message: 'Error interno del servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🦷 Nueva Sonrisa Server corriendo en http://localhost:${PORT}`);
+// Escuchar en el host '0.0.0.0' para que acepte conexiones externas en tu red local (como tu celular)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🦷 Nueva Sonrisa Server corriendo en http://0.0.0.0:${PORT}`);
   console.log(`📋 Ambiente: ${process.env.NODE_ENV || 'development'}\n`);
 });
